@@ -58,11 +58,18 @@ pub async fn broker_req(bytes: &[u8]) -> Vec<u8> {
     // add everything to the response bytes
     resp_bytes.extend_from_slice(&corr_id);       // correlation Id
     resp_bytes.extend_from_slice(&error_code);    // Error code
-    resp_bytes.extend_from_slice(&[02]);          // API version array len (size + 1)
+    resp_bytes.extend_from_slice(&[03]);          // API version array len (size + 1)
+
     resp_bytes.extend_from_slice(&api_key_bytes); // API key
     resp_bytes.extend_from_slice(&[0,0]);         // Min supported API version
     resp_bytes.extend_from_slice(&[0,4]);         // Max supported API version
-    resp_bytes.extend_from_slice(&[0]);           // Tag buff of api element of array
+    resp_bytes.extend_from_slice(&[0]);           // Tag buff of API version element of array
+
+    resp_bytes.extend_from_slice(&[0,75]); // API key
+    resp_bytes.extend_from_slice(&[0,0]);         // Min supported API version
+    resp_bytes.extend_from_slice(&[0,0]);         // Max supported API version
+    resp_bytes.extend_from_slice(&[0]);           // Tag buff of API version element of array
+
     resp_bytes.extend_from_slice(&[0,0,0,0]);     // API vers throttle time
     resp_bytes.extend_from_slice(&[0]);           // API vers resp body tag buffer
     

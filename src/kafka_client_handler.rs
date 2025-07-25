@@ -33,7 +33,7 @@ pub async fn kread_handler(
                 let mut write_buf = Vec::new();
                 write_buf.extend_from_slice(&resp_bytes);
                 respond_to_client(sock_addr, connections.clone(), &write_buf).await?;
-
+                // respond_to_client(sock_addr, connections.clone(), &[]).await?;
             },
             Err(e) => {
                 eprintln!("Read error: {}", e);
@@ -49,7 +49,7 @@ pub async fn respond_to_client(
     connections: SharedConnectionMapT,
     resp_bytes: &[u8]
 ) -> Result<(), KafkaErrors> {
-    println!("in respond_to_client, sock_addr: {}, with bytes: {:?}",sock_addr, resp_bytes);
+    // println!("in respond_to_client, sock_addr: {}, with bytes: {:?}",sock_addr, resp_bytes);
     if let Some(kclient_tx) = connections.lock().await.get(&sock_addr.port()) {
         kclient_tx.send((sock_addr, resp_bytes.to_vec()))?;   
     }
@@ -63,10 +63,11 @@ pub async fn kwrite_handler(
 ) {
 
     while let Some((_sock_addr, recv_bytes)) = rx.recv().await {
-        println!("sock_addr: {}",_sock_addr);
-        println!("response recv_bytes: {:?}",recv_bytes);
+        // println!("sock_addr: {}",_sock_addr);
+        // println!("response recv_bytes: {:?}",recv_bytes);
         match writer.write(&recv_bytes).await {
             Ok(0) => {
+                println!("returned zero..");
                 return;
             }
             Ok(_) => {
