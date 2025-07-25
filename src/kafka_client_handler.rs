@@ -23,10 +23,10 @@ pub async fn kread_handler(
             },
             Ok(n) => {
 
-                // broker_req(reader).await;
-                println!("Read {} bytes kafka client.",n);
-                println!("{:?}", &read_buf[..n]);
-                println!("{}", String::from_utf8_lossy(&read_buf[..n]));
+                // // broker_req(reader).await;
+                // println!("Read {} bytes kafka client.",n);
+                // println!("{:?}", &read_buf[..n]);
+                // println!("{}", String::from_utf8_lossy(&read_buf[..n]));
                 
                 let resp_bytes = broker_req(&read_buf[..n]).await;
                 // println!("{}",resp_bytes.len());
