@@ -29,8 +29,8 @@ pub async fn kread_handler(
                 
                 let mut write_buf = Vec::new();
                 write_buf.extend_from_slice(&[0,0,0,0]);
-                write_buf.extend_from_slice(&res_bytes[0]);
-                write_buf.extend_from_slice(&res_bytes[1]);
+                write_buf.extend_from_slice(&resp_bytes[0]);
+                write_buf.extend_from_slice(&resp_bytes[1]);
                 respond_to_client(sock_addr, connections.clone(), &write_buf).await?;
 
             },
