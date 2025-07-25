@@ -31,7 +31,6 @@ pub async fn kread_handler(
                 let resp_bytes = broker_req(&read_buf[..n]).await;
                 // println!("{}",resp_bytes.len());
                 let mut write_buf = Vec::new();
-                write_buf.extend_from_slice(&[0,0,0,19]);
                 write_buf.extend_from_slice(&resp_bytes);
                 respond_to_client(sock_addr, connections.clone(), &write_buf).await?;
 
