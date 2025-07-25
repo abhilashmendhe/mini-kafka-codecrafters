@@ -1,36 +1,66 @@
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpListener};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
-use crate::kafka_errors::KafkaErrors;
+use tokio::{net::TcpListener, sync::{mpsc, Mutex}};
 
+use crate::{kafka_client_handler::{kread_handler, kwrite_handler}, kafka_errors::KafkaErrors};
+
+pub type SharedConnectionMapT = Arc<Mutex<HashMap<u16, mpsc::UnboundedSender<(SocketAddr, Vec<u8>)>>>>;
 
 pub async fn run_kafka_broker() -> Result<(), KafkaErrors> {
 
     let listener = TcpListener::bind("127.0.0.1:9092").await?;
-    loop {
-        let (stream, _sock_addr) = listener.accept().await?;
+    let connections: SharedConnectionMapT  = Arc::new(Mutex::new(HashMap::new()));
+    // let (tx, rx) = mpsc::unbounded_channel();
 
-        let (mut reader, mut writer) = stream.into_split();
+     // Create ctrl_c future only once
+    let mut shutdown_signal = Box::pin(tokio::signal::ctrl_c());
+    loop 
+    {
+        tokio::select! {
+            listener_result = listener.accept() => {
+                match listener_result {
+                    Ok((stream, sock_addr)) => {
+                        
+                        // Channel to send/recv commands
+                        let (tx, rx) = mpsc::unbounded_channel();
 
-        // let mut buffer = [0u8; 1024];
+                        // insert k-broker clients into the map
+                        {
+                            let mut connection_gaurd = connections.lock().await;
+                            connection_gaurd.insert(sock_addr.port(),tx);
+                        }
 
-        let mut msg_buf = [0u8; 4];
-        let _msg_n = reader.read_exact(&mut msg_buf).await?;
+                        // Split the strea into reader and writer
+                        let (reader, writer) = stream.into_split();
 
-        let mut req_api_key = [0u8; 2];
-        let _req_api_key_n = reader.read_exact(&mut req_api_key).await?;
+                        // Read data from kafka client
+                        let connections1 = Arc::clone(&connections);
+                        tokio::spawn(async move {
+                            kread_handler(
+                            reader,
+                            sock_addr,
+                            connections1).await
+                        });
 
-        let mut req_api_ver = [0u8; 2];
-        let _req_api_ver_n = reader.read_exact(&mut req_api_ver).await?;
-
-        let mut corr_id = [0u8; 4];
-        let _corr_id_n = reader.read_exact(&mut corr_id).await?;
-        
-        println!("corr_id(u8): {:?}", &corr_id);
-
-        let mut write_buf = Vec::new();
-        write_buf.extend_from_slice(&[0,0,0,0]);
-        write_buf.extend_from_slice(&corr_id);
-        writer.write(&write_buf).await?;
+                        // Write response back to kafka client
+                        let connections2 = Arc::clone(&connections);
+                        tokio::spawn(async move {
+                            kwrite_handler(
+                                writer, 
+                                rx, 
+                                connections2).await
+                        });
+                    },
+                    Err(e) => {
+                        eprintln!("Accept error: {}", e)
+                    },
+                }
+            },
+            _ = &mut shutdown_signal => {
+                println!("\nCtrl-c command received!");
+                break;
+            },
+        }   
     }
-    // Ok(())
+    Ok(())
 }
