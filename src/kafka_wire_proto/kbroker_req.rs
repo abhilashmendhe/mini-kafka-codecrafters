@@ -17,7 +17,6 @@ pub async fn broker_req(bytes: &[u8]) -> Vec<Vec<u8>> {
     start = end;
     end += 2;
     let api_ver_bytes = &bytes[start..end];
-    println!("API ver: {:?}",&api_ver_bytes);
 
     let error_code = {
         if api_ver_bytes[0] == 0 && api_ver_bytes[1] <= 4 {
@@ -26,9 +25,10 @@ pub async fn broker_req(bytes: &[u8]) -> Vec<Vec<u8>> {
             [0 as u8, 35]
         }
     };
-    println!("Error code: {:?}", error_code);
+
     // c. Correlation ID 
     start = end;
+    // println!("Error code: {:?}", error_code);
     end += 4;
     let corr_id = &bytes[start..end];
 
@@ -38,7 +38,7 @@ pub async fn broker_req(bytes: &[u8]) -> Vec<Vec<u8>> {
     end += 2;
     let client_id_size = &bytes[start..end];
     let cis = (256 * client_id_size[0] as usize) + client_id_size[1] as usize;
-    println!("Client ID size: {}", cis);
+    
     // d.2 client id content
     start = end;
     end += cis;

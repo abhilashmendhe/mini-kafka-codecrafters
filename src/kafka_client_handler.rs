@@ -24,10 +24,9 @@ pub async fn kread_handler(
             Ok(n) => {
 
                 // broker_req(reader).await;
-                println!("Read {} bytes kafka client.",n);
-                let res_bytes = broker_req(&read_buf[..n]).await;
+                // println!("Read {} bytes kafka client.",n);
+                let resp_bytes = broker_req(&read_buf[..n]).await;
                 
-
                 let mut write_buf = Vec::new();
                 write_buf.extend_from_slice(&[0,0,0,0]);
                 write_buf.extend_from_slice(&res_bytes[0]);
