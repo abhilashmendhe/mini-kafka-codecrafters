@@ -15,18 +15,18 @@ pub async fn kread_handler(
         match reader.read(&mut read_buf).await {
             Ok(0) => {
                 
-                println!("Diconnecting: {}",sock_addr);
-                connections.lock().await.remove(&sock_addr.port());
-                println!("Removed connection : {}\n",sock_addr);
+                println!("Zero bytes.. Connection open to: {}",sock_addr);
+                // connections.lock().await.remove(&sock_addr.port());
+                // println!("Removed connection : {}\n",sock_addr);
 
                 return Ok(());
             },
             Ok(n) => {
 
-                // // broker_req(reader).await;
-                // println!("Read {} bytes kafka client.",n);
-                // println!("{:?}", &read_buf[..n]);
-                // println!("{}", String::from_utf8_lossy(&read_buf[..n]));
+                // broker_req(reader).await;
+                println!("Read {} bytes kafka client.",n);
+                println!("{:?}", &read_buf[..n]);
+                println!("{}", String::from_utf8_lossy(&read_buf[..n]));
                 
                 let resp_bytes = broker_req(&read_buf[..n]).await;
                 // println!("{}",resp_bytes.len());
@@ -49,6 +49,7 @@ pub async fn respond_to_client(
     connections: SharedConnectionMapT,
     resp_bytes: &[u8]
 ) -> Result<(), KafkaErrors> {
+    println!("in respond_to_client, sock_addr: {}, with bytes: {:?}",sock_addr, resp_bytes);
     if let Some(kclient_tx) = connections.lock().await.get(&sock_addr.port()) {
         kclient_tx.send((sock_addr, resp_bytes.to_vec()))?;   
     }
@@ -61,7 +62,9 @@ pub async fn kwrite_handler(
     connections: SharedConnectionMapT
 ) {
 
-    if let Some((_sock_addr, recv_bytes)) = rx.recv().await {
+    while let Some((_sock_addr, recv_bytes)) = rx.recv().await {
+        println!("sock_addr: {}",_sock_addr);
+        println!("response recv_bytes: {:?}",recv_bytes);
         match writer.write(&recv_bytes).await {
             Ok(0) => {
                 return;
