@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::mpsc::{ UnboundedReceiver}};
 
-use crate::{kafka_errors::KafkaErrors, kafka_wire_proto::kbroker_req_res::broker_req, run_kbroker::SharedConnectionMapT};
+use crate::{kafka_errors::KafkaErrors, kafka_wire_proto::kbroker_req_res::parse_broker_req, run_kbroker::SharedConnectionMapT};
 
 pub async fn kread_handler(
     mut reader: tokio::net::tcp::OwnedReadHalf,
@@ -28,7 +28,7 @@ pub async fn kread_handler(
                 println!("{:?}", &read_buf[..n]);
                 println!("{}", String::from_utf8_lossy(&read_buf[..n]));
                 
-                let resp_bytes = broker_req(&read_buf[..n]).await;
+                let resp_bytes = parse_broker_req(&read_buf[..n]).await;
                 // println!("{}",resp_bytes.len());
                 let mut write_buf = Vec::new();
                 write_buf.extend_from_slice(&resp_bytes);

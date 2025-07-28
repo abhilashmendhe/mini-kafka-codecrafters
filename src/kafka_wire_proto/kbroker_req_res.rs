@@ -1,7 +1,7 @@
-#[allow(unused)]
-pub async fn broker_req(bytes: &[u8]) -> Vec<u8> {
+use crate::kafka_wire_proto::{apiversion_req::parse_api_version_req, describe_topic_part_req::parse_describe_topic_req};
 
-    let mut resp_bytes = vec![];
+#[allow(unused)]
+pub async fn parse_broker_req(bytes: &[u8]) -> Vec<u8> {
 
     let mut start = 0;
     let mut end = 4;
@@ -15,73 +15,17 @@ pub async fn broker_req(bytes: &[u8]) -> Vec<u8> {
     end += 2;
     let api_key_bytes = &bytes[start..end];
 
-    // b. API Version
-    start = end;
-    end += 2;
-    let api_ver_bytes = &bytes[start..end];
-
-    let error_code = {
-        if api_ver_bytes[0] == 0 && api_ver_bytes[1] <= 4 {
-            [0 as u8, 0]
-        } else {    
-            [0 as u8, 35]
-        }
+    let resp_bytes = if api_key_bytes == [0, 18] { // API Version Request Body (v4)
+        parse_api_version_req(start, end, &api_key_bytes, &bytes).await
+    } else if api_key_bytes == [0, 75] {
+        parse_describe_topic_req(start, end, api_key_bytes, &bytes).await
+    } else {
+        vec![]
     };
-
-    // c. Correlation ID 
-    start = end;
-    // println!("Error code: {:?}", error_code);
-    end += 4;
-    let corr_id = &bytes[start..end];
-
-    // d. Client ID
-    // d.1 client id length
-    start = end;
-    end += 2;
-    let client_id_size = &bytes[start..end];
-    let cis = (256 * client_id_size[0] as usize) + client_id_size[1] as usize;
-    
-    // d.2 client id content
-    start = end;
-    end += cis;
-    let clieint_id_content = &bytes[start..end];
-
-    // e. Tag buffer
-    start = end;
-    end += 1;
-    let req_header_tag_buf = &bytes[start..end];
-
-    // API Version Request Body (v4)
-    // ........
-
-
-    // add everything to the response bytes
-    resp_bytes.extend_from_slice(&corr_id);       // correlation Id
-    resp_bytes.extend_from_slice(&error_code);    // Error code
-    resp_bytes.extend_from_slice(&[03]);          // API version array len (size + 1)
-
-    resp_bytes.extend_from_slice(&api_key_bytes); // API key
-    resp_bytes.extend_from_slice(&[0,0]);         // Min supported API version
-    resp_bytes.extend_from_slice(&[0,4]);         // Max supported API version
-    resp_bytes.extend_from_slice(&[0]);           // Tag buff of API version element of array
-
-    resp_bytes.extend_from_slice(&[0,75]); // API key
-    resp_bytes.extend_from_slice(&[0,0]);         // Min supported API version
-    resp_bytes.extend_from_slice(&[0,0]);         // Max supported API version
-    resp_bytes.extend_from_slice(&[0]);           // Tag buff of API version element of array
-
-    resp_bytes.extend_from_slice(&[0,0,0,0]);     // API vers throttle time
-    resp_bytes.extend_from_slice(&[0]);           // API vers resp body tag buffer
-    
-    let resp_msg_size = compute_response_size(resp_bytes.len()).await;
-    // println!("resp_msg_size: {:?}",resp_msg_size);
-    let mut new_resp_bytes = vec![];
-    new_resp_bytes.extend_from_slice(&resp_msg_size);
-    new_resp_bytes.extend_from_slice(&resp_bytes);
-    new_resp_bytes
+    resp_bytes
 }
 
-pub async fn compute_response_size(mut n: usize) -> Vec<u8> {
+pub async fn compute_response_size_to_vec(mut n: usize) -> Vec<u8> {
     
     let mut msg_size = [0 as u8; 5];
     let mut i = 0;
